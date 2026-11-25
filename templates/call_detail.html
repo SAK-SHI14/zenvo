@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenvo — Call #{{ call.id }} Details</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div>
+        <h1>Call #{{ call.id }} Report</h1>
+        <p class="subtitle">Recorded {{ call.call_datetime }}</p>
+      </div>
+      <nav class="nav-actions" aria-label="Call detail navigation">
+        <a class="btn" href="/dashboard">Back to Dashboard</a>
+        <a class="btn btn-primary" href="/">New Call</a>
+      </nav>
+    </header>
+
+    <div class="detail-grid">
+      <!-- Customer Information -->
+      <aside class="panel" aria-label="Customer information">
+        <h2 class="section-heading">Customer Information</h2>
+        <dl class="meta-list">
+          <dt>Name</dt>
+          <dd>{{ call.customer.name }}</dd>
+          <dt>Phone</dt>
+          <dd class="num">{{ call.customer.masked_phone }}</dd>
+          <dt>Language</dt>
+          <dd>{{ call.customer.language }}</dd>
+          <dt>Status</dt>
+          <dd><span class="badge status-{{ call.customer.status }}">{{ call.customer.status }}</span></dd>
+          <dt>Need</dt>
+          <dd>{{ call.customer.need }}</dd>
+          <dt>Budget</dt>
+          <dd>{{ call.customer.budget }}</dd>
+          <dt>Timeline</dt>
+          <dd>{{ call.customer.timeline }}</dd>
+        </dl>
+      </aside>
+
+      <!-- Call Summary, Objections, Buying Signals, Sentiment Timeline, Transcript -->
+      <div>
+        <section class="panel" aria-label="Call summary and insights">
+          <div class="panel-header">
+            <h2>Summary &amp; Insights</h2>
+            <div>
+              <span class="badge sentiment-{{ call.overall_sentiment }}">{{ call.overall_sentiment }}</span>
+              <span class="badge num">Score: {{ call.final_score }} / 100</span>
+            </div>
+          </div>
+
+          <p class="summary-copy">{{ call.summary }}</p>
+
+          <div class="insight-columns">
+            <div>
+              <h3 class="sub-heading">Objections</h3>
+              {% if call.objections %}
+              <ul class="bullet-list">
+                {% for obj in call.objections %}
+                <li>{{ obj }}</li>
+                {% endfor %}
+              </ul>
+              {% else %}
+              <p class="empty-state">No objections recorded.</p>
+              {% endif %}
+            </div>
+
+            <div>
+              <h3 class="sub-heading">Buying Signals</h3>
+              {% if call.buying_signals %}
+              <ul class="bullet-list">
+                {% for sig in call.buying_signals %}
+                <li>{{ sig }}</li>
+                {% endfor %}
+              </ul>
+              {% else %}
+              <p class="empty-state">No buying signals recorded.</p>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="next-action-box">
+            <h3 class="sub-heading">Next Best Action</h3>
+            <p>{{ call.next_action }}</p>
+          </div>
+        </section>
+
+        <section class="panel" aria-label="Sentiment timeline">
+          <h2 class="section-heading">Sentiment Timeline</h2>
+          {% if call.sentiment_timeline %}
+          <div class="timeline-strip">
+            {% for point in call.sentiment_timeline %}
+            <div class="timeline-step sentiment-{{ point }}">
+              <span class="timeline-turn">Step {{ loop.index }}</span>
+              <span class="timeline-label">{{ point }}</span>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="empty-state">No sentiment timeline entries recorded.</p>
+          {% endif %}
+        </section>
+
+        <section class="panel" aria-label="Conversation transcript">
+          <div class="panel-header">
+            <h2>Conversation Transcript</h2>
+            <span class="panel-count">{{ call.messages|length }} messages</span>
+          </div>
+
+          {% if call.messages %}
+          <div class="transcript-stack">
+            {% for msg in call.messages %}
+            <div class="msg msg-{{ msg.role }}">
+              <div class="msg-meta">
+                <span class="msg-speaker">{{ msg.speaker_label }}</span>
+                <span class="num">{{ msg.timestamp }} · {{ msg.sentiment }} ({{ msg.score }})</span>
+              </div>
+              <p class="msg-text">{{ msg.text }}</p>
+            </div>
+            {% endfor %}
+          </div>
+          {% else %}
+          <p class="empty-state">No transcript messages recorded for this call.</p>
+          {% endif %}
+        </section>
+      </div>
+    </div>
+  </div>
+</body>
+</html>

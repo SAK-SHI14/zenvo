@@ -1,0 +1,166 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenvo — AI Sales Voice Call</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/call.css" />
+</head>
+<body>
+  <div class="page">
+    <!-- Top bar: product identity and simulation notice -->
+    <header class="topbar">
+      <div class="brand">
+        <h1>Zenvo Voice Desk</h1>
+        <p class="caption">Simulated call: browser STT/TTS stand in for telephony</p>
+      </div>
+      <a class="nav-link" href="/dashboard">Dashboard</a>
+    </header>
+
+    <!-- Main two-column workspace (collapses to 1 column on mobile) -->
+    <main class="workspace">
+      <!-- Left column: call setup, mic control, state indicator, text fallback -->
+      <section class="panel call-panel" aria-label="Call controls">
+        <div class="status-row">
+          <span class="status-label">Call State</span>
+          <span id="state-badge" class="state-badge state-idle" aria-live="polite">Idle</span>
+        </div>
+
+        <!-- Visible welcome-back line for returning leads -->
+        <p id="returning-note" class="notice notice-info hidden" aria-live="polite"></p>
+
+        <!-- Visible error or browser-compatibility banner -->
+        <p id="error-banner" class="notice notice-error hidden" role="alert"></p>
+
+        <!-- Small note if no matching TTS voice is installed -->
+        <p id="voice-note" class="notice notice-muted hidden" aria-live="polite"></p>
+
+        <!-- Big circular microphone control (pulse ring activates only while listening) -->
+        <div class="mic-stage">
+          <button
+            id="mic-btn"
+            type="button"
+            class="mic-button"
+            aria-label="Toggle microphone listening"
+            disabled
+          >
+            <svg class="mic-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+              <rect x="9" y="3" width="6" height="11" rx="3"></rect>
+              <path d="M5 11a7 7 0 0 0 14 0"></path>
+              <line x1="12" y1="18" x2="12" y2="21"></line>
+              <line x1="8" y1="21" x2="16" y2="21"></line>
+            </svg>
+          </button>
+          <p id="mic-hint" class="mic-hint">Start a call to begin speaking</p>
+        </div>
+
+        <!-- Pre-call options: language selector and optional phone -->
+        <div class="controls-grid">
+          <label class="field">
+            <span class="field-label">Language</span>
+            <select id="language-select" name="language">
+              <option value="en">English (en-IN)</option>
+              <option value="hi">Hindi (hi-IN)</option>
+              <option value="hinglish">Hinglish (en-IN)</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span class="field-label">Caller Phone (optional)</span>
+            <input
+              id="phone-input"
+              type="tel"
+              inputmode="tel"
+              maxlength="15"
+              placeholder="+919876543210"
+            />
+          </label>
+        </div>
+
+        <!-- Primary call lifecycle buttons -->
+        <div class="call-actions">
+          <button id="start-btn" type="button" class="btn btn-primary">Start Call</button>
+          <button id="end-btn" type="button" class="btn btn-danger" disabled>End Call</button>
+        </div>
+
+        <!-- Text input fallback using the exact same /turn path as the mic -->
+        <form id="text-form" class="text-fallback">
+          <label class="sr-only" for="text-input">Type a message instead of speaking</label>
+          <input
+            id="text-input"
+            type="text"
+            maxlength="500"
+            placeholder="Or type your message here..."
+            disabled
+          />
+          <button id="send-btn" type="submit" class="btn btn-secondary" disabled>Send</button>
+        </form>
+      </section>
+
+      <!-- Right column: live sentiment/score meter, transcript bubbles, end-of-call summary -->
+      <section class="panel live-panel" aria-label="Live conversation and lead insights">
+        <div class="metrics-bar">
+          <div class="metric">
+            <span class="field-label">Sentiment</span>
+            <span id="sentiment-value" class="sentiment-pill sentiment-neutral">neutral</span>
+          </div>
+          <div class="metric metric-score">
+            <div class="score-header">
+              <span class="field-label">Lead Score</span>
+              <span id="score-value" class="score-number">0 / 100</span>
+            </div>
+            <div class="score-track" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" id="score-track">
+              <div id="score-fill" class="score-fill" style="width: 0%;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="transcript-section">
+          <h2 class="section-title">Live Transcript</h2>
+          <div id="transcript-list" class="transcript-list" aria-live="polite">
+            <p class="empty-state">No messages yet. Click Start Call to hear Zenvo's greeting.</p>
+          </div>
+        </div>
+
+        <!-- End-of-call summary card populated from POST /end_call -->
+        <article id="summary-card" class="summary-card hidden" aria-live="polite">
+          <div class="summary-header">
+            <h2 class="section-title">Call Summary</h2>
+            <span id="summary-sentiment" class="sentiment-pill sentiment-neutral">neutral</span>
+          </div>
+          <p id="summary-text" class="summary-text"></p>
+
+          <div class="summary-grid">
+            <div>
+              <h3>Objections</h3>
+              <ul id="summary-objections" class="summary-list"></ul>
+            </div>
+            <div>
+              <h3>Buying Signals</h3>
+              <ul id="summary-signals" class="summary-list"></ul>
+            </div>
+          </div>
+
+          <div class="summary-next">
+            <h3>Next Best Action</h3>
+            <p id="summary-next-action"></p>
+          </div>
+
+          <div class="summary-footer">
+            <span id="summary-score" class="summary-score-note"></span>
+            <a class="btn btn-secondary" href="/dashboard">Open Dashboard</a>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+
+  <script src="/static/call.js"></script>
+</body>
+</html>

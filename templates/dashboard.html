@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zenvo — Sales Operations Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link
+    href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=IBM+Plex+Sans:wght@400;500;600&family=Noto+Sans+Devanagari:wght@400;500;600&display=swap"
+    rel="stylesheet"
+  />
+  <link rel="stylesheet" href="/static/dashboard.css" />
+</head>
+<body>
+  <div class="page">
+    <header class="topbar">
+      <div>
+        <h1>Zenvo Sales Operations</h1>
+        <p class="subtitle">Live pipeline overview from SQLite call records</p>
+      </div>
+      <nav class="nav-actions" aria-label="Dashboard navigation">
+        <a class="btn btn-primary" href="/">New Call</a>
+      </nav>
+    </header>
+
+    <!-- KPI Overview -->
+    <section class="kpi-grid" aria-label="Key performance indicators">
+      <div class="kpi-card">
+        <span class="kpi-label">Total Leads</span>
+        <span class="kpi-value">{{ kpis.total_leads }}</span>
+        <span class="kpi-note">All tracked callers</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Completed Calls</span>
+        <span class="kpi-value">{{ kpis.completed_calls }}</span>
+        <span class="kpi-note">Finalized summaries</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Qualified Leads</span>
+        <span class="kpi-value">{{ kpis.qualified_leads }}</span>
+        <span class="kpi-note">Score 40+ or booked</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Appointments Booked</span>
+        <span class="kpi-value">{{ kpis.appointments_booked }}</span>
+        <span class="kpi-note">Confirmed slots</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Avg Lead Score</span>
+        <span class="kpi-value">{{ "%.1f"|format(kpis.avg_score) }}</span>
+        <span class="kpi-note">Out of 100</span>
+      </div>
+      <div class="kpi-card">
+        <span class="kpi-label">Conversion Rate</span>
+        <span class="kpi-value">{{ "%.1f"|format(kpis.conversion_rate) }}%</span>
+        <span class="kpi-note">{{ kpis.conversion_note }}</span>
+      </div>
+    </section>
+
+    <!-- Leads Table -->
+    <section class="panel" aria-label="Leads">
+      <div class="panel-header">
+        <h2>Leads</h2>
+        <span class="panel-count">{{ leads|length }} total</span>
+      </div>
+
+      {% if leads %}
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Lead Name</th>
+              <th>Phone</th>
+              <th>Language</th>
+              <th>Score</th>
+              <th>Sentiment</th>
+              <th>Status</th>
+              <th>Customer Need</th>
+              <th>Last Interaction</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for lead in leads %}
+            <tr>
+              <td>{{ lead.name }}</td>
+              <td class="num">{{ lead.masked_phone }}</td>
+              <td>{{ lead.language }}</td>
+              <td class="num">{{ lead.score }}</td>
+              <td><span class="badge sentiment-{{ lead.sentiment }}">{{ lead.sentiment }}</span></td>
+              <td><span class="badge status-{{ lead.status }}">{{ lead.status }}</span></td>
+              <td class="need-cell">{{ lead.need }}</td>
+              <td class="num">{{ lead.last_interaction }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+      {% else %}
+      <p class="empty-state">No leads recorded yet. Start a call from the Voice Desk to populate this table.</p>
+      {% endif %}
+    </section>
+
+    <!-- Appointments and Recent Calls -->
+    <div class="split-grid">
+      <section class="panel" aria-label="Appointments">
+        <div class="panel-header">
+          <h2>Appointments</h2>
+          <span class="panel-count">{{ appointments|length }} scheduled</span>
+        </div>
+
+        {% if appointments %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Lead Name</th>
+                <th>Date &amp; Time</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for appt in appointments %}
+              <tr>
+                <td>{{ appt.lead_name }}</td>
+                <td class="num">{{ appt.slot_datetime }}</td>
+                <td><span class="badge status-{{ 'booked' if appt.status == 'confirmed' else 'new' }}">{{ appt.status }}</span></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No appointments booked yet.</p>
+        {% endif %}
+      </section>
+
+      <section class="panel" aria-label="Recent calls">
+        <div class="panel-header">
+          <h2>Recent Calls</h2>
+          <span class="panel-count">{{ calls|length }} completed</span>
+        </div>
+
+        {% if calls %}
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Caller</th>
+                <th>Call Date &amp; Time</th>
+                <th>Score</th>
+                <th>Sentiment</th>
+                <th>Details</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for call in calls %}
+              <tr>
+                <td>{{ call.caller_label }}</td>
+                <td class="num">{{ call.call_datetime }}</td>
+                <td class="num">{{ call.final_score }}</td>
+                <td><span class="badge sentiment-{{ call.overall_sentiment }}">{{ call.overall_sentiment }}</span></td>
+                <td><a class="table-link" href="/dashboard/calls/{{ call.id }}">View Details</a></td>
+              </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        {% else %}
+        <p class="empty-state">No completed calls yet. End an active call to generate a summary.</p>
+        {% endif %}
+      </section>
+    </div>
+  </div>
+</body>
+</html>
